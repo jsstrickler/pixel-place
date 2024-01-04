@@ -22,15 +22,48 @@ const canvas = document.getElementById("canvas")
 const ctx = canvas.getContext("2d")
 const colorOptions = document.querySelectorAll(".color-option")
 
-fetch("https://pixelplaceapp.adaptable.app/api/canvas")
-	.then((res) => res.json())
-	.then((data) => {
-		let canvasImg = []
-		data.forEach((color) => {
-			const rgba = rgbas[color]
-			canvasImg = canvasImg.concat(rgba)
-		})
-		const imgData = new ImageData(new Uint8ClampedArray(canvasImg), 128)
+// fetch("http://localhost:3000/api/canvas")
+// 	.then((res) => res.json())
+// 	.then((data) => {
+// 		let canvasImg = []
+// 		data.forEach((hexIndex) => {
+// 			const index = parseInt(hexIndex, 16)
+// 			const rgba = rgbas[index]
+// 			canvasImg = canvasImg.concat(rgba)
+// 		})
+// 		const imgData = new ImageData(new Uint8ClampedArray(canvasImg), 128)
+// 		ctx.putImageData(imgData, 0, 0)
+// 	})
+// 	.catch((err) => console.error(err))
+
+const mapColors = (packedData) => {
+	const unpackedData = []
+
+	// Unpack the data
+	for (let i = 0; i < packedData.length; i++) {
+		const byte = packedData[i]
+		const high = (byte >> 4) & 0x0f
+		const low = byte & 0x0f
+		unpackedData.push(high, low)
+	}
+
+	// Map the 4-bit colors directly to rgba values and flatten the array
+	const flatArray = unpackedData.flatMap((color) => rgbas[color])
+
+	// Convert to Uint8ClampedArray
+	const uint8Array = new Uint8ClampedArray(flatArray)
+
+	return uint8Array
+}
+
+fetch("http://localhost:3000/api/canvas")
+	.then((res) => res.arrayBuffer())
+	.then((buffer) => {
+		const packedData = new Uint8Array(buffer)
+		const imageDataArray = mapColors(packedData)
+
+		// Create ImageData and put it on the canvas
+		const imgData = new ImageData(imageDataArray, 128)
 		ctx.putImageData(imgData, 0, 0)
 	})
 	.catch((err) => console.error(err))
@@ -104,7 +137,6 @@ container.addEventListener("mousemove", function (e) {
 			container.style.cursor = "move"
 
 			// updating canvas position
-			console.log(translation)
 			canvas.style.transform = `translate(${translation.x / zoom}px, ${
 				translation.y / zoom
 			}px)`
